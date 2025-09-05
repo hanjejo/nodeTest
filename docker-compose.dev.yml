@@ -1,0 +1,72 @@
+# Docker Compose 개발 환경 설정
+
+services:
+  # 개발용 MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: nodetest-mongodb-dev
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: nodetest_dev
+    volumes:
+      - mongodb_dev_data:/data/db
+    networks:
+      - nodetest-dev-network
+
+  # 개발용 Redis
+  redis:
+    image: redis:7-alpine
+    container_name: nodetest-redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - nodetest-dev-network
+
+  # 개발용 백엔드
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nodetest-backend-dev
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongodb:27017/nodetest_dev
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-key
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - nodetest-dev-network
+
+  # 개발용 프론트엔드
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: nodetest-frontend-dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      REACT_APP_API_URL: http://localhost:3001
+    networks:
+      - nodetest-dev-network
+
+volumes:
+  mongodb_dev_data:
+  redis_dev_data:
+
+networks:
+  nodetest-dev-network:
+    driver: bridge
